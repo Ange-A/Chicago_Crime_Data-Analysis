@@ -1,0 +1,8 @@
+"0",""
+"0","#column separation"
+"0",""
+"0",""
+"0","crimes <- separate(crime, col= OCCURENCE_DATE, into=c('DATE', 'HOUR','AM'), sep=' ')"
+"0","crimes$HOUR <- paste(crimes$HOUR, crimes$AM)"
+"0","crimes <- crimes[,-c(4)]"
+"0",""

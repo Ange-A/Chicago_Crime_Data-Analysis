@@ -1,0 +1,512 @@
+crime3 <- crime2[, -c(14,15,16,17,18)]
+empty <- crime3== ''
+crime3[crime3 == ''] <- NA
+crimes <- na.omit(crime3)
+crimes <- unique(crimes)
+crimes %>%  toupper(crimes)
+crimes %>%  casefold(crimes, upper = TRUE)
+View(df)
+casefold(crimes, upper = TRUE)
+casefold(crimes, upper = TRUE)
+crimes <- casefold(crimes, upper = TRUE)
+crimes <-  crimes %>% casefold(crimes, upper = TRUE)
+crime3 <- crime2[, -c(14,15,16,17,18)]
+crime3[crime3 == ''] <- NA
+plot(st_geometry(crimes))
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(ggplot2)
+library(janitor)
+library(lubridate)
+library(kableExtra)
+library(stringr)
+library(maps)
+library(sf)
+library(rgdal)
+library(sp)
+library(maptools)
+library(tmap)
+library(mapproj)
+plot(st_geometry(crimes))
+chicago <- map_data("chicago")
+mapping <- ggplot()+
+geom_polygon(data = crimes, aes(x=LONGITUDE, y= LATITUDE, group= BLOCK),
+color= "black", fill= "green")
+mapping <- ggplot()+
+geom_polygon(data =crimes, aes(x=LONGITUDE, y= LATITUDE, group= BLOCK),
+color= "black", fill= "green")
+mapping <- ggplot(crimes)+
+geom_polygon(aes(x=LONGITUDE, y= LATITUDE, group= BLOCK),
+color= "black", fill= "green")
+class(crimes)
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(ggplot2)
+library(janitor)
+library(lubridate)
+library(kableExtra)
+library(stringr)
+library(maps)
+library(sf)
+library(rgdal)
+library(sp)
+library(maptools)
+library(tmap)
+crime <- read.csv("Crimes_Present.csv", header = TRUE, sep= ",")
+shp <- readOGR("geo_export_2bcc7318-43ac-4794-a825-d5565ab7d933.shp")
+colnames(crime)[1]= "ID"
+colnames(crime)[2]= "OCCURENCE_DATE"
+colnames(crime)[5]="PRIMARY_DESCRIPTION"
+colnames(crime)[6]="SECONDARY_DESCRIPTION"
+colnames(crime)[7]="LOCATION_DESCRIPTION"
+colnames(crime)[12]="FBI_CD"
+colnames(crime)[13]="X_COORDINATE"
+colnames(crime)[14]="Y_COORDINATE"
+class(crimes)
+crimes <- separate(crime, col= OCCURENCE_DATE, into=c('DATE', 'HOUR','AM'), sep=' ')
+crimes$HOUR <- paste(crime2$HOUR, crime2$AM)
+crimes <- crimes[,-c(4)]
+class(crimes)
+crimes <- crimes %>% mutate(DATE = as_date(DATE, format= "%m/%d/%Y"))
+class(crimes)
+crimes[, c(9,10)] [crimes[, c(9,10)] == "N"] <- "NO"
+crimes[, c(9,10)] [crimes[, c(9,10)] == "Y"] <- "YES"
+crimes[crimes == ''] <- NA
+crimes <- na.omit(crimes)
+crimes <- unique(crimes)
+crimes <- mutate_all(crimes, .funs=toupper)
+class(crimes)
+mapping <- ggplot(crimes)+
+geom_polygon(aes(x=LONGITUDE, y= LATITUDE, group= BLOCK),
+color= "black", fill= "green")
+mapping
+colnames(crime)
+class(crime$LATITUDE)
+class(crime$LONGITUDE)
+devtools::install_github("dkahle/ggmap", ref = "tidyup")
+library(ggmap)
+chicago <- get_stamenmap(bbox = c(left = -88.0225, bottom = 41.5949,
+right = -87.2713, top = 42.0677),
+zoom = 10)
+chicago
+longitude_latitude.new<- rbind(c( -87.6298,41.8781), c( -87.4298,41.9781))
+longitude_latitude.new<-as.data.frame(longitude_latitude.new)
+longitude_latitude.new
+colnames(longitude_latitude.new) <- c('Longitude', 'Latitude')
+longitude_latitude.new<
+longitude_latitude.new
+longitude_latitude.new
+chicago_map <- ggmap(chicago)
+chicago_map
+class(crimes)
+shp <- readOGR("geo_export_2bcc7318-43ac-4794-a825-d5565ab7d933.shp", stringsAsFactors = FALSE)
+plot(shp)
+options(scipen = 999)
+map_and_data <- inner_join(shp, crimes)
+library(sf)
+class(shp)
+shp <- st_read("geo_export_2bcc7318-43ac-4794-a825-d5565ab7d933.shp", stringsAsFactors = FALSE)
+class(shp)
+map_and_data <- inner_join(shp, crimes)
+str(shp)
+View(shp)
+View(shp)
+str(crime$LOCATION)
+View(shp)
+Block_Crime <- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$n),]
+High_Crime_Blocks
+View(crimes)
+unique(crimes$PRIMARY_DESCRIPTION)
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$n),]
+High_Crime_Blocks
+unique(crimes$SECONDARY_DESCRIPTION)
+unique(crimes$PRIMARY_DESCRIPTION)
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$n),]
+High_Crime_Blocks
+criminality<- crimes %>%
+gather(BLOCK, PRIMARY_DESCRIPTION ) %>%
+group_by(BLOCK) %>%
+arrange(BLOCK, -PRIMARY_DESCRIPTION )
+criminality<- crimes %>%
+gather(BLOCK,PRIMARY_DESCRIPTION ) %>%
+group_by(BLOCK) %>%
+arrange(BLOCK, -PRIMARY_DESCRIPTION )
+colnames(crime)[1]= "ID"
+colnames(crime)[2]= "OCCURENCE_DATE"
+colnames(crime)[5]="PDESCRIPTION"
+colnames(crime)[6]="SDESCRIPTION"
+colnames(crime)[7]="LOCATION_DESCRIPTION"
+colnames(crime)[12]="FBI_CD"
+colnames(crime)[13]="X_COORDINATE"
+colnames(crime)[14]="Y_COORDINATE"
+crimes <- separate(crime, col= OCCURENCE_DATE, into=c('DATE', 'HOUR','AM'), sep=' ')
+crimes$HOUR <- paste(crime2$HOUR, crime2$AM)
+crimes <- crimes[,-c(4)]
+crimes <- crimes %>% mutate(DATE = as_date(DATE, format= "%m/%d/%Y"))
+crimes[, c(9,10)] [crimes[, c(9,10)] == "N"] <- "NO"
+crimes[, c(9,10)] [crimes[, c(9,10)] == "Y"] <- "YES"
+crimes[crimes == ''] <- NA
+crimes <- na.omit(crimes)
+crimes <- unique(crimes)
+crimes <- mutate_all(crimes, .funs=toupper)
+criminality<- crimes %>%
+gather(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+arrange(BLOCK, -PDESCRIPTION)
+criminality<- crimes %>%
+gather(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+arrange(BLOCK, PDESCRIPTION)
+criminality
+criminality<- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+criminality
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK)
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(ggplot2)
+library(janitor)
+library(lubridate)
+library(kableExtra)
+library(stringr)
+library(maps)
+library(sf)
+library(rgdal)
+library(sp)
+library(maptools)
+library(tmap)
+library(mapproj)
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK)
+criminality
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+summarize(n = n())
+criminality
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+summarize(PDESCRIPTION = n())
+criminality
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK) %>%
+criminality
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(BLOCK)
+criminality
+criminality <- crimes %>%
+select(BLOCK,PDESCRIPTION ) %>%
+group_by(PDESCRIPTION)
+criminality
+View(crimes)
+High_Crime_Blocks
+View(crimes)
+unique(crimes$PRIMARY_DESCRIPTION)
+unique(crimes$PRIMARY_DESCRIPTION)
+View(crimes)
+unique(crimes$PDESCRIPTION)
+turnover <-
+tribble (     ~last,       ~year_1997,     ~year_1998,     ~year_1999,
+"Martin",       2,            3.6,             4.8,
+"Smith",       8.4,          8.5,             9.2,
+"Hasnaoui",   5.4,          7.5,             7.2
+)
+turnover
+turnover2 <- turnover %>% pivot_longer(cols = -last,
+names_to = "Year",
+names_prefix = "year_",
+values_to ="Turnover"
+)
+turnover2
+View(crimes)
+criminality <- crimes %>%
+group_by(PDESCRIPTION) %>%
+Summarize(n = n()))
+criminality <- crimes %>%
+group_by(PDESCRIPTION) %>%
+summarize(n = n())
+criminality
+High_Crimes<- criminality[order(-criminality$n),]
+High_Crimes
+View(High_Crimes)
+Block_Crime <- (summary <- crimes %>%
+select(PDESCRIPTION) %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+View(crimes)
+Block_Crime <-  crimes %>%  (summary <- crimes %>%
+select(PDESCRIPTION) %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK) %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+Block_Crime
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK))
+Block_Crime
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK) %>%
+group_by(PDESCRIPTION))
+Block_Crime
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK) %>%
+group_by(BLOCK))
+Block_Crime
+View(Block_Crime)
+unique(crimes$BLOCK)
+Blocks
+View(Blocks)
+Blocks <- unique(crimes$BLOCK)
+View(Blocks)
+High_Crime_Blocks
+criminality <- crimes %>%
+group_by(PDESCRIPTION) %>%
+summarize(n = n())
+criminality
+sums = matrix(ncol=10, nrow = 31, data=NA)
+sums
+sums = matrix(ncol=31, nrow = 10, data=NA)
+sums
+sums <- gather(crimes, key, val, -BLOCK) %>%
+count(-BLOCK, val) %>%
+spread(val, n, fill = 0)
+sums <- gather(crimes, key, val, -BLOCK) %>%
+count(BLOCK, val) %>%
+spread(val, n, fill = 0)
+sums
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK) %>%
+group_by(BLOCK))
+Block_Crime
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK) %>%
+group_by(BLOCK))
+Block_Crime
+sums <- gather(Block_Crime, key, val, -BLOCK) %>%
+count(BLOCK, val) %>%
+spread(val, n, fill = 0)
+sums
+Block_Crime <-  (summary <- crimes %>%
+select(PDESCRIPTION, BLOCK) %>%
+group_by(BLOCK))
+Block_Crime
+sums
+View(sums)
+Block_Crime
+class(sums)
+ncol(sums)
+colnames(sums)
+sums$sum = rowSums(sums,c[2:32])
+data.frame(sums)
+sums$sum = rowSums(sums,c[2:32])
+class(sums$ARSON)
+sums$sum = rowSums(sums[,c(2:32)])
+sums$sum
+sums
+top10 <- sums[1:10, ]
+top10
+View(top10)
+summary <- sums[with(sums,order(-sum)),]
+View(summary)
+top10 <- summary[1:10, ]
+View(top10)
+colnames(summary)
+colnames(top10)
+top10
+percentages <- round((top10/rowSums(top10))*100,1)
+class(top10)
+data.frame(top10)
+top10 <- top10[,-c(33)]
+top10
+percentages <- round((top10[,c(2:32)]/rowSums(top10[,c(2:32)]))*100,1)
+percentages
+View(percentages)
+top10 <- summary[1:10, ]
+sums$total =  colSums(sums[,c(2:32)])
+colnames(top10)
+top10$total =  colSums(sums[,c(2:33)])
+top10$total =  colSums(sums[,c(2:32)])
+top10$total =  colSums(top10[,c(2:32)])
+top10$total =  colSums(top10)
+top10$total =  colSums(top10[,c(2,32)])
+top10$total =  colSums(top10[,c(2:10)])
+top10$total =  colSums(top10[,c(2:11)])
+top10 <- summary[1:10, ]
+total =  colSums(top10[,c(2:11)])
+total
+total =  colSums(top10)
+ncol(top10)
+total =  colSums(top10[,c(2:32)])
+total
+df <- data.frame(total)
+df
+df1 <- rbind(top10, df)
+df1
+View(df1)
+df2 <- addmargins(table(top10))
+df <- data.frame(total)
+df
+dfordered <- df[order(-df$total),]
+dfordered
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$n),]
+Block_Crime <- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(ggplot2)
+library(janitor)
+library(lubridate)
+library(kableExtra)
+library(stringr)
+Block_Crime <- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$n),]
+View(crimes)
+Block_Crime <- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(n = n()))
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$n),]
+High_Crime_Blocks
+df <- data.frame(total)
+df <- data.frame(-total)
+df
+df <- data.frame(total)
+df
+View(df)
+df %>%  arrange(desc(total))
+WorkingData <-  (top10 [,c("THEFT", "BATTERY")])
+WorkingData
+WorkingData <-  (top10 [,c("BLOCK","THEFT", "BATTERY")])
+WorkingData
+df
+df %>%  arrange(desc(total))
+df <- df %>%  arrange(desc(total))
+df
+WorkingData <-  (top10 [,c("BLOCK","THEFT", "BATTERY","CRIMINAL TRESPASS", "ASSAULT", "DECEPTIVE PRACTICE")])
+WorkingData
+Working <- pivot_longer(WorkingData,
+cols= -BLOCK,
+names_prefix = "Crime",
+Values_to= "Total"
+)
+Working <- pivot_longer(WorkingData,
+cols= -BLOCK,
+names_prefix = "Crime",
+values_to= "Total"
+)
+Working
+Working <- pivot_longer(WorkingData,
+cols= -BLOCK,
+names_to ="crime",
+names_prefix = "Crime",
+values_to= "Total"
+)
+Working
+class(Working)
+crimeplot <- ggplot(Working, aes(x = crime, y= Total))+
+geom_col()+
+facet_wrap(~ BLOCK)
+crimeplot
+crimeplot <- ggplot(Working, aes(x = crime, y= Total, fill= crime))+
+geom_col()+
+facet_wrap(~ BLOCK)
+crimeplot
+High_Crime_Blocks
+unique(crimes$LOCATION_DESCRIPTION)
+View(High_Crime_Blocks)
+yes <- crimes %>% count(LOCATION_DESCRIPTION, ARREST = YES)
+yes <- crimes %>% count(LOCATION_DESCRIPTION, ARREST = "YES")
+yes
+yes <- crimes %>% count(LOCATION_DESCRIPTION, ARREST = "YES", ARREST= "NO")
+yes
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(yes = count(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(yes = countif(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(countif(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(count(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(sum(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize((ARREST= "YES")))
+yes
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(count_fields(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+summarize(count(ARREST= "YES")))
+yes<- (summary <- crimes %>%
+group_by(BLOCK)%>%
+count(ARREST= "YES"))
+yes
+yes<- (summary <- crimes %>%
+group_by(LOCATION_DESCRIPTION)%>%
+count(ARREST= "YES"))
+yes
+yes<- (summary <- crimes %>%
+group_by(LOCATION_DESCRIPTION)%>%
+count(ARREST== "YES"))
+yes
+yes<- (summary <- crimes %>%
+group_by(LOCATION_DESCRIPTION)%>%
+count(ARREST== "YES", ARREST== "NO"))
+yes
+yes <- crimes %>% count(LOCATION_DESCRIPTION, ARREST = "YES", ARREST= "NO")
+yes
+NO <- crimes %>% count(LOCATION_DESCRIPTION, ARREST = "NO")
+NO
+yes<- (summary <- crimes %>%
+group_by(LOCATION_DESCRIPTION)%>%
+summarize(count(ARREST== "YES", ARREST== "NO")))
+View(turnover2)
+yesno <- crimes %>%
+group_by(LOCATION_DESCRIPTION) %>%
+summarize(count = sum(ARREST== "YES"))
+yesno
+yesno <- crimes %>%
+group_by(LOCATION_DESCRIPTION) %>%
+summarize(Yes = sum(ARREST== "YES"), (NO = sum(ARREST== 'NO')))
+yesno
+View(yesno)
+yesno <- crimes %>%
+group_by(LOCATION_DESCRIPTION) %>%
+summarize(Yes = sum(ARREST== "YES"), NO = sum(ARREST== 'NO'))
+yesno
+class(yesno)
+yesnototal =  colSums(yesno[,c(2:3)])
+yesnototal
+domestic <- crimes %>%
+summarize(Yes = sum(Domestic== "YES"), NO = sum(Domestic== 'NO'))
+domestic <- crimes %>%
+summarize(Yes = sum(DOMESTIC == "YES"), NO = sum(DOMESTIC == 'NO'))
+domestic

@@ -1,0 +1,5 @@
+"0","crime <- read.csv(""Crimes_Present.csv"", header = TRUE, sep= "","")"
+"0",""
+"0","crimehead <- head(crime, n=3)"
+"0",""
+"0",""

@@ -1,0 +1,92 @@
+library(readr)
+library(tidyverse)
+library(tibble)
+library(kableExtra)
+
+
+install.packages("kabble")
+
+exercise
+-#------------------------------------------
+
+myfile <- file(description = "City_Employee_Payroll__2013-2018_.csv","r")
+first_10 <- readLines(con = myfile, n=10)
+
+first_10
+  
+#-----------------------------------
+  
+  file<- file.path("Exercises/City_Employee_Payroll__2013-2018_.csv","r")
+  file
+  
+  exercise <- read.delim(file = "City_Employee_Payroll__2013-2018_.csv",header = TRUE, sep = ";", dec = ",")
+  
+  View(exercise)
+  
+  #------------subset------------
+  
+  summary(exercise$Year)
+  
+ exercise_2013 <- subset(exercise, Year = 2013)
+ 
+ exercise_2013
+ 
+ #____________________
+ 
+ Exercise1500 <- head(exercise_2013, 1500)
+  
+Exercise1500
+nrow(Exercise1500)
+View(Exercise1500)
+
+#----------------------------
+
+unique(Exercise1500$Department.Title)
+n_distinct(Exercise1500$Department.Title)
+
+#-----------------------------------------------
+
+employee_department <- addmargins(table(Exercise1500$Department.Title))
+View(employee_department)
+
+#-------------------------------------
+
+
+
+employee_department_count  <- Exercise1500 %>% group_by(Department.Title) %>% summarise(n=n())
+
+employee_department_count 
+
+
+#--------------------------------------------
+
+employee_department2 <- addmargins(table(Exercise1500$Department.Title, Exercise1500$Employment.Type))
+employee_department2
+
+employee_department_count2  <- Exercise1500 %>% group_by(Department.Title,Employment.Type) %>% summarise(n=n())
+
+employee_department_count2 
+
+#---------------------------------------------
+Exercise_Pivot <- employee_department_count2 %>% pivot_wider(id_cols = Department.Title,
+                             names_from = Employment.Type,
+                             values_from = n, values_fill = list(n= 0))
+Exercise_Pivot
+
+#-------------------------------------------------
+
+Exercise5b <- addmargins(table(Exercise1500$Department.Title, Exercise1500$Employment.Type ))
+
+Exercise5bgroup  <- Exercise1500 %>% group_by(Department.Title, Employment.Type) %>% summarise(n=n())
+Exercise5bgroup
+
+Exercise_Pivot5b <- Exercise5bgroup %>% pivot_wider(id_cols = Department.Title,
+                                                             names_from = Employment.Type,
+                                                             values_from = n, values_fill = list(n= 0))
+Exercise_Pivot5b
+
+#---------------------------------------------------------------
+
+prop.table(table(Exercise1500$Department.Title, Exercise1500$Employment.Type), 1)
+
+

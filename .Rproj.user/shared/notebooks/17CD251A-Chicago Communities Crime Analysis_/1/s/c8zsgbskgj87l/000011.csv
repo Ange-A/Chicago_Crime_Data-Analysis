@@ -1,0 +1,4 @@
+"0",""
+"0","High_Crimes<- criminality[order(-criminality$n),]"
+"0",""
+"0","High_Crimes %>% summarise(Percentage=n()/ncol(.))"

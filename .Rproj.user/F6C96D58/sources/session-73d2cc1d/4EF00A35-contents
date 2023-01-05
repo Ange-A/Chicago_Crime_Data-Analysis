@@ -1,0 +1,661 @@
+---
+title: "Final project: 07 - DS - Behavioural Tools, 2022"
+author: "David Binder and Ange Christelle Aduhire"
+date: "2022-11-23"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Load_Libraries, include=FALSE}
+# Import libraries
+library(tidyverse)
+library(pastecs)
+library(tmap) 
+library(sf)
+library(foreign)
+library(scales)
+
+```
+
+```{r Prepare_Data, include=FALSE}
+# Load property data
+property_data_2022_s1 = read.csv("valeursfoncieres-2021.txt", sep = "|")
+nrow(property_data_2022_s1) # 1429093
+
+# Rename columns we need with '.' in their name
+colnames(property_data_2022_s1)[19] = "code_departement"
+colnames(property_data_2022_s1)[20] = "code_commune"
+colnames(property_data_2022_s1)[17] = "code_postal"
+colnames(property_data_2022_s1)[37] = "type_local"
+colnames(property_data_2022_s1)[8] = "no_disposition"
+colnames(property_data_2022_s1)[11] = "valeur_fonciere"
+
+# Keep houses and apartments
+property_data_2022_s1 = property_data_2022_s1[property_data_2022_s1$type_local %in% c('Maison', 'Appartement'),]
+nrow(property_data_2022_s1) # 441495
+
+# Remove duplicate rows
+property_data_2022_s1 = unique(property_data_2022_s1)
+nrow(property_data_2022_s1) # 428196 - much faster this time, less than 10 seconds
+
+# Select columns we want
+property_sales_2022_s1 = property_data_2022_s1[,c("code_departement", "code_commune", "Commune", "code_postal", "type_local", "no_disposition", "valeur_fonciere")]
+
+# Remove records where department code is missing
+property_sales_2022_s1 = property_sales_2022_s1[!is.na(property_sales_2022_s1$code_departement),]
+nrow(property_sales_2022_s1) # 428196 (no rows removed)
+
+# Remove records where property value is missing
+property_sales_2022_s1$valeur_fonciere = as.numeric(gsub(',', '.', property_sales_2022_s1$valeur_fonciere))
+property_sales_2022_s1 = property_sales_2022_s1[!is.na(property_sales_2022_s1$valeur_fonciere),]
+nrow(property_sales_2022_s1) # 427427
+
+# Left pad zeroes to short Code_commune values
+property_sales_2022_s1[nchar(property_sales_2022_s1$code_commune) == 2,]$code_commune = paste0("0", property_sales_2022_s1[nchar(property_sales_2022_s1$code_commune) == 2,]$code_commune)
+property_sales_2022_s1[nchar(property_sales_2022_s1$code_commune) == 1,]$code_commune = paste0("00", property_sales_2022_s1[nchar(property_sales_2022_s1$code_commune) == 1,]$code_commune)
+
+# Create INSEE code  
+property_sales_2022_s1$Code_INSEE = paste0(property_sales_2022_s1$code_departement, property_sales_2022_s1$code_commune)
+
+# Keep properties with sale prices between 50000 and 2000000
+property_sales_2022_s1 = property_sales_2022_s1[property_sales_2022_s1$valeur_fonciere >= 50000,]
+nrow(property_sales_2022_s1) # 407475
+
+property_sales_2022_s1 = property_sales_2022_s1[property_sales_2022_s1$valeur_fonciere <= 2000000,]
+nrow(property_sales_2022_s1) # 401717
+
+# Summarize sales data by INSEE code
+property_sales_insee_2022_s1 = property_sales_2022_s1 %>% 
+  group_by(code_departement, code_insee = Code_INSEE, type_local) %>% 
+  summarise(valeur_fonciere = sum(valeur_fonciere), num_properties = n())
+nrow(property_sales_insee_2022_s1) # 29062
+
+# Summarize INSEE code-level sales data by department
+property_sales_dept_2022_s1 = property_sales_insee_2022_s1 %>% 
+  group_by(code_departement, type_local) %>% 
+  summarise(valeur_fonciere = sum(valeur_fonciere), num_properties = sum(num_properties))
+nrow(property_sales_dept_2022_s1) # 194
+
+# Filter department-level sales data by apartments 
+property_sales_dept_appartement_2022_s1 = property_sales_dept_2022_s1 %>% 
+  filter(type_local == 'Appartement') 
+nrow(property_sales_dept_appartement_2022_s1) # 97
+
+# Filter department-level sales data by houses
+property_sales_dept_maison_2022_s1 = property_sales_dept_2022_s1 %>% 
+  filter(type_local == 'Maison') 
+nrow(property_sales_dept_maison_2022_s1) # 97
+
+# Read shapefile with polygons representing each department in France
+france_level2 = read_sf("fs569ct0668.shp") # departments
+colnames(france_level2)[10] = "code_departement"
+
+# Import commune-level salary information
+france_salary_info = read.csv("net_salary_per_town_categories.csv", sep = ',')
+france_salary_info[nchar(france_salary_info$CODGEO) == 4,]$CODGEO = paste0("0", france_salary_info[nchar(france_salary_info$CODGEO) == 4,]$CODGEO)
+colnames(france_salary_info)[1] = "code_insee"
+france_salary_info[,"code_departement"] = substring(france_salary_info[,"code_insee"], 1, 2)
+
+# Import commune-level population information
+population = read.csv("population.csv", sep = ',') 
+population_commune = aggregate(population$NB, by=list(Category=population$CODGEO), FUN=sum)
+#population_commune[nchar(population_commune$CODGEO) == 4,]$CODGEO = paste0("0", population_commune[nchar(population_commune$CODGEO) == 4,]$CODGEO)
+colnames(population_commune) = c("code_insee", "population")
+population_commune[,"code_departement"] = substring(population_commune[,"code_insee"], 1, 2)
+
+# Join salary and population information
+salary_population_commune = merge(france_salary_info, population_commune, by = "code_insee") # 5107 matches, so minimal loss
+nrow(salary_population_commune) # 5107
+
+# Aggregate salary and population data to department-level
+salary_population_dept = salary_population_commune %>% 
+  group_by(code_departement = code_departement.x) %>% 
+  summarise(avg_net_income = sum(SNHM14 * population) / sum(population), population = sum(population))
+nrow(salary_population_dept) # 97
+
+# Merge department-level geographic, salary / population, and property sales data 
+all_data_dept_2022_s1 = list(france_level2, salary_population_dept, property_sales_dept_appartement_2022_s1, property_sales_dept_maison_2022_s1) %>% reduce(full_join, by='code_departement')
+nrow(all_data_dept_2022_s1) # 101
+all_data_dept_2022_s1$valeur_appartement = all_data_dept_2022_s1$valeur_fonciere.x / all_data_dept_2022_s1$num_properties.x
+all_data_dept_2022_s1$valeur_maison = all_data_dept_2022_s1$valeur_fonciere.y / all_data_dept_2022_s1$num_properties.y
+all_data_dept_2022_s1$valeur_fonciere = (all_data_dept_2022_s1$valeur_fonciere.x + all_data_dept_2022_s1$valeur_fonciere.y) / (all_data_dept_2022_s1$num_properties.x + all_data_dept_2022_s1$num_properties.y)   
+all_data_dept_2022_s1$maison_to_appartement = all_data_dept_2022_s1$valeur_maison / all_data_dept_2022_s1$valeur_appartement
+colnames(all_data_dept_2022_s1)[20] = "num_properties"
+all_data_dept_2022_s1$avg_annual_net_income = all_data_dept_2022_s1$avg_net_income * 35 * 52
+all_data_dept_2022_s1$affordability = all_data_dept_2022_s1$valeur_fonciere / all_data_dept_2022_s1$avg_annual_net_income
+
+all_data_dept_2022_s1 = st_as_sf(all_data_dept_2022_s1)
+
+# Read coordinates and population of France's largest cities
+biggest_cities_france = read.csv("Biggest cities France.csv", sep = ',')
+biggest_cities_france$Population = as.numeric(gsub(',', '', biggest_cities_france$Population))
+
+```
+
+
+```{r colnames renamed, include=FALSE}
+colnames(salary_population_commune) [3]= "mean_net_salary"
+colnames(salary_population_commune) [4]= "executive"
+colnames(salary_population_commune) [5]= "middle_manager"
+colnames(salary_population_commune) [6]= "employee"
+colnames(salary_population_commune) [7]= "worker"
+colnames(salary_population_commune) [8]= "women"
+colnames(salary_population_commune) [9]= "feminin_executive" 
+colnames(salary_population_commune) [10]= "feminin_middle_manager"
+colnames(salary_population_commune) [11]= "feminin_employee"
+colnames(salary_population_commune) [12]= "feminin_worker"
+colnames(salary_population_commune) [13]= "man"
+colnames(salary_population_commune) [14]= "masculin_executive"
+colnames(salary_population_commune) [15]= "masculin_middle_manager"
+colnames(salary_population_commune) [16]= "masculin_employee"
+colnames(salary_population_commune) [17]= "masculin_worker"
+colnames(salary_population_commune) [18]= "18-25years_old"
+colnames(salary_population_commune) [19]= "26-50years_old"
+colnames(salary_population_commune) [20]= ">50years_old"
+colnames(salary_population_commune) [21]= "women_18-25years_old"
+colnames(salary_population_commune) [22]= "women_26-50 years_old"
+colnames(salary_population_commune) [23]= "women_ >50years_old"
+colnames(salary_population_commune) [24]= "men_18-25years_old"
+colnames(salary_population_commune) [25]= "men_26-50years_old"
+colnames(salary_population_commune) [26]= "men >50years_old"
+```
+
+
+# Introduction
+Detailed property sales and income data are available across France for analysis and comparison. Our research sought to answer some fundamental questions based on recent views of this data:
+- Do income disparities exist across France between men and women performing similar jobs?
+- What absolute differences in home prices exist between urban vs rural areas, and between houses and apartments?
+- WHat differences exist in housing affordability based on comparisons of income and home price data?
+
+We used R to import, clean, merge, and analyze several large data sets, including:
+- hourly income data from XYZ, split between men and women for different types of jobs (executives, middle managers, and employees) (2015)
+- house price data from data.gouv.fr covering all recorded sales (H1 2022)
+- population data from INSEE (2017) and worldpopulationreview.com (2022)
+- polygon data from The University of Texas at Austin GeoData website (2015)
+
+Although the data sets come from different sources and represent different snapshots, we believe the conclusions drawn are likely still valid today. Nonetheless, we hope to have the opportunity to refresh and align the data sets for confirmation.
+
+# Income analysis
+Income data from INSEE was expressed as the mean net salary per hour at the commune (town) level across France. Data was presented for men and women across multiple job categories, including executives, middle managers, and employees. 
+
+We wanted to understand if wage disparities existed between men and women in different geographies and across different job types. Our analysis revealed that man are consistently paid more than women for performing similar roles, regardless of geography, job type, or income level.
+
+## Income by job type and gender
+
+To get a first glance at gender difference in income, we compared the mean of all female employees to male employees from positions:(executive, middle managers, employees, and non contracted workers) across the 92 departments studied.
+
+```{r salaries for all, echo=TRUE, warning=TRUE}
+#Women vs Men_Linear -----------------------------------------------------
+
+salary_All= salary_population_commune %>%
+  group_by(code_departement = code_departement.x)%>%
+  summarise(Female= mean(women), Male= mean(man), Average_income= mean(mean_net_salary))
+
+salary_All_Transposed <- salary_All%>% pivot_longer(cols = (2:3),
+                                                          names_to = "Gender",
+                                                          values_to ="Gender_income"
+)
+
+All <- ggplot(salary_All_Transposed, aes(x = Gender_income, y = Average_income, group= Gender))+
+  geom_point(color="dark blue")+
+  geom_smooth(method="lm", colour="orange") +
+  geom_abline(intercept=0,
+              slope=1,
+              color="blue") +
+  xlim(c(8,25))+
+  ylim(c(8,25)) +
+  coord_equal()+
+  
+  labs(title="Average Income of Males is higher in the 97 departments measured",
+       subtitle="Male vs Female Average Net Income/Hour_2017",
+       caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town",
+       x="Female Averages", y= "Male Averages"
+  )+
+  
+  theme(panel.background = element_rect(fill = "lightblue"),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),   
+        plot.subtitle = element_text(hjust = 0.5),           
+        plot.caption = element_text(hjust = 0.5, face = "italic")) 
+
+
+
+  All 
+
+  All +  annotate("text", x = 20, y = 10,
+                  label = "0,9743x + 0,1051")
+
+```
+Male Employees averages are higher across all positions in every single department. for each of the 97 departments, males positions are higher at a 10% average. This calls in to  understand more on what the differences look like at a position level. the female to male comparison is therefore broken down into three categories(Executive, Middle Managers and Employees).
+
+
+## Gender income comparison - executives
+
+
+Average Income for all Male Executives, Middle Managers and Employees are higher accross all the 97 French departments:
+
+Lets evaluate the positional figures:
+
+1. Male Executives vs Female Executives(Average Net Income Per Hour):
+
+
+|           |Male Executives|  Female Executives|
+|-----------|---------------|-------------------|         
+| Min       |   13.8        | 12                |    
+| Median    |   24.6        | 20                |
+| Maximum   |   58          | 35.5              |
+ 
+The minimum and median differences are not significantly outstanding but the maximum net income per hour is the figure that demonstrates the most how much of a gap in income there is between a male and a female executive
+
+```{r executives cleaning,  include=FALSE}
+salary_Executive = salary_population_commune %>%
+  group_by(code_departement = code_departement.x)%>%
+  summarise(Female_executives= mean(feminin_executive), Male_executives= mean(masculin_executive)) 
+
+executives_transposed <- salary_Executive%>% pivot_longer(cols = (2:3),
+                                                          names_to = "Gender",
+                                                          values_to ="average_income")
+```
+
+
+
+```{r executives ggplot, echo=FALSE}
+
+
+
+executives_plot<- ggplot(executives_transposed, aes(x = Gender, y = average_income, fill=Gender)) +
+geom_boxplot()+ 
+
+labs(title="Average Net Income of Males Executives is higher",
+     subtitle="Male vs Female Executives _2017",
+     caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town",
+     x="Gender", y= "Average Income/hour"
+    
+)+
+
+  theme(panel.grid.major.x = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),   
+        plot.subtitle = element_text(hjust = 0.5),           
+        plot.caption = element_text(hjust = 0.3, face = "italic")) 
+                     
+executives_plot + scale_fill_manual(values = wes_palette("BottleRocket1", n = 2))
+
+
+
+
+
+
+
+
+```
+
+
+## Gender income comparison - middle managers
+
+2. Male Middle Managers vs Female Middle Managers(Average Net Income Per Hour):
+
+
+|           |Male Middle Managers|Female Middle Managers|
+|-----------|--------------------|----------------------|         
+| Min       |   10.6             | 11.8                 |    
+| Median    |   15.6             | 13.1                 |
+| Maximum   |   93.4             | 19                   |
+ 
+ 
+ The minimum and medium range differences are significant but the maximum average for the male middle managers are outstanding.
+ This outlier even exceeds the maximum value for the average income of male executives. Investigating further into the data we notice that
+ three towns from two departments: Chambourcy(département des Yvelines), Mérignies(Nord) and Saint Saint-Nom-la-Bretèche(département des Yvelines) hold the highest averages for middle managers: 93.4, 61.4 and 56.3.
+ These figures can either symbolize that most business owners are also the business managers in the respective towns, or that these outliers    need further accuracy investigation.
+
+```{r  Middle Managers cleaning, include=FALSE}
+salary_MM = salary_population_commune %>%
+  group_by(code_departement = code_departement.x)%>%
+  summarise(Female_MM= mean(feminin_middle_manager), Male_MM= mean(masculin_middle_manager)) 
+
+
+MM_transposed <- salary_MM%>% pivot_longer(cols = (2:3),
+                                                          names_to = "Gender",
+                                                          values_to ="average_income"
+)
+
+```
+
+
+```{r Middle Managers ggplot, echo=FALSE}
+
+
+
+
+MM_plot<- ggplot(MM_transposed, aes(x = Gender, y = average_income, fill=Gender)) +
+  geom_boxplot()+
+       labs(title="Average Income of Males is higher in all departments measured",
+       subtitle="Male vs Female Middle Managers_2017",
+       caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town",
+       x="Average Income/hour", y= "Gender"
+     
+  )+
+  
+  theme(panel.grid.major.x = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),   
+        plot.subtitle = element_text(hjust = 0.5),           
+        plot.caption = element_text(hjust = 0.3, face = "italic"),
+        
+      )
+
+MM_plot + scale_fill_manual(values = wes_palette("Royal1", n = 2))
+
+```
+
+
+## Gender income comparison - employees
+
+3. Male Employees vs Female Employees(Average Net Income Per Hour):
+
+
+|           |Male Employees |  Female Employees |
+|-----------|---------------|-------------------|         
+| Min       |   8           | 8.7               |    
+| Median    |   11.1        | 10.1              |
+| Maximum   |   23.5        | 16.1              |
+
+the income gap is smaller in the employees section, however the maximum range still varies significantly between male and female employees.
+
+```{r  employees cleaning, include=FALSE}
+salary_Employees = salary_population_commune %>%
+  group_by(code_departement = code_departement.x)%>%
+  summarise(Female_Employee= mean(feminin_employee), Male_Employee= mean(masculin_employee)) 
+
+Employees_transposed <- salary_Employees%>% pivot_longer(cols = (2:3),
+                                           names_to = "Gender",
+                                           values_to ="average_income"
+)
+```
+
+```{r  employees ggplot, echo=FALSE}
+
+
+Employee_plot<- ggplot(Employees_transposed, aes(x = Gender, y = average_income, fill=Gender)) +
+  geom_boxplot()+
+  labs(title="Average Income of Males is higher in all departments measured",
+       subtitle="Male vs Female Employees_2017",
+       caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town",
+       x="Average Income/hour", y= "Gender"
+  )+
+  
+  theme(panel.grid.major.x = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),   
+        plot.subtitle = element_text(hjust = 0.5),           
+        plot.caption = element_text(hjust = 0.3, face = "italic")) 
+
+
+Employee_plot + scale_fill_manual(values = wes_palette("Chevalier1", n = 2))
+```
+The difference in income between women and men in different departments accross France can influence our research on identifying the 
+purchasing power of women vs men in real estates. On a gender spectrum there are other factor, there are many factors other than the purchasing
+power that can influence sales in real estates such as savings, preferences, demographics, but from an income overview men hold higher purchasing power than women.
+
+These can also fuel our research of identifying in general which departments offer higher salary ranges and higher purchasing power accross France.
+
+# Home value vs income analysis
+
+## French home values by department relative to big cities by size
+
+In general, home values are higher near France's largest cities and lower in more remote regions. The database excluded data from three departments of mainland France, all in the northeast: Bas-Rhin, du Haut-Rhin, and Moselle. Data from these departments is held in the "land register" ("livre foncier") and not the national database of documents (la base nationale des documents patrimoniaux, or BNDP) containing the home sales data we used for this analysis.
+
+We filtered data in several important ways prior to analysis:
+- removed duplicate records
+- filtered only house and apartment sales
+- only kept home sales where reported value was between EUR 50,000 and EUR 2,000,000
+
+Visualizations used showed different statistics by department of France, sometimes highlighting large cities by location and relative population.
+
+An example of the ggplot code used to produce the following maps is included below. A number of settings were updated to improve the clarity and cleanliness of each visualization, including:
+- filling the polygons representing each department to reflect different statistics
+- choosing visually interesting color schemes to highlight differences
+- tidying labels and number formats (e.g., including commas in numeric values to improve readability)
+- removing unnecessary elements such as chart gridlines and color, as well as axis text, ticks, titles and lines
+- including descriptive titles, subtitles, and captions to emphasize key insights and identify main data sources
+
+The first map plots average home values by department. Lower-priced homes are in lighter yellow / orange departments, while higher-priced homes are in darker purple departments. France's largest cities are highlighted with blue diamonds whose size is proportionate to the population of the city. City names are not added to the charts to reduce clutter, especially as most or all will be familiar to readers with knowledge of French geography.
+```{r Map_1a, echo=TRUE}
+# MAP 1a: French home values by department relative to big cities by size
+all_data_2022_s1_homes <- ggplot(data = all_data_dept_2022_s1) +
+  geom_sf(aes(fill = valeur_fonciere)) +
+  scale_fill_viridis_c(direction = -1, na.value="gray", labels = comma, 
+                       limits = c(100000, 600000), 
+                       breaks = c(150000, 250000, 350000, 450000, 550000), 
+                       option = "plasma", trans = "sqrt") +
+  geom_point(data = biggest_cities_france, mapping = aes(x = lon, y = lat, size = Population), 
+             shape = "diamond", colour = "darkblue") + 
+  scale_size_continuous(labels = comma) + 
+  theme(legend.position="right") +
+  theme_classic() +
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.title.x=element_blank(), #remove x axis title
+        axis.line.x=element_blank(), #remove x axis line
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        axis.title.y=element_blank(), #remove y axis title
+        axis.line.y=element_blank(), #remove y axis line
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),    # Center title position and size
+        plot.subtitle = element_text(hjust = 0.5),            # Center subtitle
+        plot.caption = element_text(hjust = 0.5, face = "italic")# move caption to the left
+  ) +
+  labs(
+    title="French home values are highest near big cities",
+    subtitle="Average home value by department, 2022 H1",
+    caption="Sources: data.gouv.fr, 2022 H1 house & apartment sales,\nworldpopulationreview.com, 2022 data",
+    fill = "Avg home value (€)"
+  ) + 
+  guides(fill = guide_legend(reverse = TRUE, order = 2), ) +
+  guides(size = guide_legend(order = 1))
+all_data_2022_s1_homes
+```
+
+## French house values by department relative to big cities by size
+Remaining maps will be shown alone without the code used to create them, as most of the code will be similar to the example used for the first map.
+
+The second map reproduces the previous one, but focuses specifically on house values. Overall pricing is somewhat more uniform across the country but still higher close to urban centers.
+```{r Map_1b, echo=FALSE}
+# MAP 1b: French house values by department relative to big cities by size
+all_data_2022_s1_maison <- ggplot(data = all_data_dept_2022_s1) +
+  geom_sf(aes(fill = valeur_maison)) +
+  scale_fill_viridis_c(direction = -1, na.value="gray", labels = comma, 
+                       limits = c(50000, 2000000), 
+                       breaks = c(200000, 400000, 600000, 800000, 1000000), 
+                       option = "plasma", trans = "sqrt") +
+  geom_point(data = biggest_cities_france, mapping = aes(x = lon, y = lat, size = Population), 
+             shape = "diamond", colour = "darkblue") + 
+  scale_size_continuous(labels = comma) + 
+  theme(legend.position="right") +
+  theme_classic() +
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.title.x=element_blank(), #remove x axis title
+        axis.line.x=element_blank(), #remove x axis line
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        axis.title.y=element_blank(), #remove y axis title
+        axis.line.y=element_blank(), #remove y axis line
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),    # Center title position and size
+        plot.subtitle = element_text(hjust = 0.5),            # Center subtitle
+        plot.caption = element_text(hjust = 0.5, face = "italic")# move caption to the left
+  ) +
+  labs(
+    title="French house values are highest near big cities",
+    subtitle="Average house value by department, 2022 H1",
+    caption="Sources: data.gouv.fr, 2022 H1 house sales,\nworldpopulationreview.com, 2022 data",
+    fill = "Avg house value (€)"
+  ) + 
+  guides(fill = guide_legend(reverse = TRUE, order = 2), ) +
+  guides(size = guide_legend(order = 1))
+all_data_2022_s1_maison
+```
+
+## French apartment values by department relative to big cities by size
+Similarly, the third map focuses on apartment values, which are overall lower and less varied compared to house values. The pattern of higher pricing near large cities remains but the effect is more subtle.
+```{r Map_1c, echo=FALSE}
+# MAP 1c: French apartment values by department relative to big cities by size
+all_data_2022_s1_appartement <- ggplot(data = all_data_dept_2022_s1) +
+  geom_sf(aes(fill = valeur_appartement)) +
+  scale_fill_viridis_c(direction = -1, na.value="gray", labels = comma, 
+                       limits = c(50000, 2000000), 
+                       breaks = c(100000, 200000, 300000, 400000, 500000), 
+                       option = "plasma", trans = "sqrt") +
+  geom_point(data = biggest_cities_france, mapping = aes(x = lon, y = lat, size = Population), 
+             shape = "diamond", colour = "darkblue") + 
+  scale_size_continuous(labels = comma) + 
+  theme(legend.position="right") +
+  theme_classic() +
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.title.x=element_blank(), #remove x axis title
+        axis.line.x=element_blank(), #remove x axis line
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        axis.title.y=element_blank(), #remove y axis title
+        axis.line.y=element_blank(), #remove y axis line
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),    # Center title position and size
+        plot.subtitle = element_text(hjust = 0.5),            # Center subtitle
+        plot.caption = element_text(hjust = 0.5, face = "italic")# move caption to the left
+  ) +
+  labs(
+    title="French apartment values are highest near big cities",
+    subtitle="Average apartment value by department, 2022 H1",
+    caption="Sources: data.gouv.fr, 2022 H1 apartment sales,\nworldpopulationreview.com, 2022 data",
+    fill = "Avg apartment value (€)"
+  ) + 
+  guides(fill = guide_legend(reverse = TRUE, order = 2), ) +
+  guides(size = guide_legend(order = 1))
+all_data_2022_s1_appartement
+```
+
+## Comparison of French house and apartment values by department
+The fourth map compares average house values to average apartment values by department. Again, lighter shades reflect lower values -- in rare cases, the average house price in some departments is actually lower than the corresponding average apartment price. At the other extreme, in Paris and southeeast France (including Corsica), houses are typically much more expensive than apartments, sometimes double or more. To improve readability, the large cities have been removed, as their location and relative size have already been established.
+```{r Map_2, echo=FALSE}
+# MAP 2: Ratio of French house values to apartment values by department 
+all_data_2022_s1_maison_to_appartement <- ggplot(data = all_data_dept_2022_s1) +
+  geom_sf(aes(fill = maison_to_appartement)) +
+  scale_fill_viridis_c(direction = -1, na.value="gray", option = "D") +
+  theme(legend.position="right") +
+  theme_classic() +
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.title.x=element_blank(), #remove x axis title
+        axis.line.x=element_blank(), #remove x axis line
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        axis.title.y=element_blank(), #remove y axis title
+        axis.line.y=element_blank(), #remove y axis line
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),    # Center title position and size
+        plot.subtitle = element_text(hjust = 0.5),            # Center subtitle
+        plot.caption = element_text(hjust = 0.5, face = "italic")# move caption to the left
+  ) +
+  labs(
+    title="The ratio of house values to apartment values\nis highest in Paris and the southeast of France",
+    subtitle="Avg house to apartment value by department, 2022 H1",
+    caption="Source: data.gouv.fr, 2022 H1 house & apartment sales",
+    fill = "Ratio: avg house value\nto avg apartment value"
+  ) + 
+  guides(fill = guide_legend(reverse = TRUE)) 
+all_data_2022_s1_maison_to_appartement
+```
+
+## Affordability of French homes by department
+The final map synthesizes data from both the income and housing data sets. It is often the case that incomes are also higher near larger cities where home values are higher. Comparing the relationship between average home value and average annual net income (estimated by multiplying average hourly net income by 35 hours / week x 52 weeks) yields much less consistent patterns across France. This simple estimate of home affordability remains high near Paris, but also in departments where home prices themselves did not appear high in absolute terms.
+```{r Map_3, echo=FALSE}
+# MAP 3: Home price affordability by department
+all_data_2022_s1_affordability <- ggplot(data = all_data_dept_2022_s1) +
+  geom_sf(aes(fill = affordability)) +
+  scale_fill_viridis_c(direction = -1, na.value="gray", option = "F", breaks = c(6, 9, 12, 15)) +
+  theme(legend.position="right") +
+  theme_classic() +
+  theme(axis.text.x=element_blank(), #remove x axis labels
+        axis.ticks.x=element_blank(), #remove x axis ticks
+        axis.title.x=element_blank(), #remove x axis title
+        axis.line.x=element_blank(), #remove x axis line
+        axis.text.y=element_blank(),  #remove y axis labels
+        axis.ticks.y=element_blank(),  #remove y axis ticks
+        axis.title.y=element_blank(), #remove y axis title
+        axis.line.y=element_blank(), #remove y axis line
+        panel.grid.major = element_blank(), #remove major gridlines
+        panel.grid.minor = element_blank(), #remove minor gridlines
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),    # Center title position and size
+        plot.subtitle = element_text(hjust = 0.5),            # Center subtitle
+        plot.caption = element_text(hjust = 0.5, face = "italic")# move caption to the left
+  ) +
+  labs(
+    title="The least affordable homes are\nnot always the most expensive!",
+    subtitle="Avg home value (2022 H1) as a multiple\nof avg annual net income (2015)",
+    caption="Sources: data.gouv.fr, 2022 H1 house sales,\nKaggle / INSEE, 2015 avg annual net income",
+    fill = "Ratio: avg home value to\navg annual net income"
+  ) + 
+  guides(fill = guide_legend(reverse = TRUE, order = 1), ) +
+  guides(size = "none") 
+all_data_2022_s1_affordability
+```
+
+```{r eval=FALSE, include=FALSE}
+france_salary_info = read.csv("net_salary_per_town_categories.csv", sep = ',')
+france_salary_info[nchar(france_salary_info$CODGEO) == 4,]
+CODGEO = paste0("0", france_salary_info[nchar(france_salary_info$CODGEO) == 4,]$CODGEO)
+colnames(france_salary_info)[1] = "code_insee"
+france_salary_info[,"code_departement"] = substring(france_salary_info[,"code_insee"], 1, 2)
+```
+
+```{r include=FALSE}
+# Import commune-level population information
+population = read.csv("population.csv", sep = ',') 
+population_commune = aggregate(population$NB, by=list(Category=population$CODGEO), FUN=sum)
+#population_commune[nchar(population_commune$CODGEO) == 4,]$CODGEO = paste0("0", population_commune[nchar(population_commune$CODGEO) == 4,]$CODGEO)
+colnames(population_commune) = c("code_insee", "population")
+population_commune[,"code_departement"] = substring(population_commune[,"code_insee"], 1, 2)
+```
+
+```{r eval=FALSE, include=FALSE}
+
+#Group average income per department & summarize by the  population in the respective departments
+salary_population_dept = salary_population_commune %>%
+  group_by(code_departement = code_departement.x) %>%
+  summarise(avg_net_income = sum(SNHM14 * population) / sum(population), population = sum(population))
+nrow(salary_population_dept) 
+```
+
+
+```{r eval=FALSE, include=FALSE}
+#Executives
+salary_Executive = salary_population_commune %>%
+  group_by(code_departement = code_departement.x)%>%
+  summarise(female_executive= mean(feminin_executive), male_executive= mean(masculin_executive), executives_mean=mean(executive)) 
+
+
+#Executives graph
+executives <- ggplot(salary_Executive, aes(x = female_executive, y = male_executive)) +
+  geom_smooth(method="lm", colour="blue") +
+  geom_line(intercept=0, 
+              slope=1,
+              color="red") +
+  geom_point() +
+  scale_y_continuous(breaks=seq(0, 36, 4)) +
+  scale_x_continuous(breaks=seq(0, 36, 4))
+
+```
+
+```{r}
+
+```
+

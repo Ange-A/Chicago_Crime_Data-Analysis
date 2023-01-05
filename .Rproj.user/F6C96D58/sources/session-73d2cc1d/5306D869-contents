@@ -1,0 +1,168 @@
+---
+title: "Moneyball"
+output: html_document
+
+---
+
+*FML*
+
+*1 octobre2019*
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r include=FALSE}
+library(Lahman)
+library(kableExtra)
+library(tidyverse)
+library(Lahman)
+library("formattable")
+library("scales")
+library(ggplot2)
+library("ggthemes")
+library(vembedr)
+```
+
+```{r include=FALSE}
+df <- Lahman::Teams
+newframe <- subset(df, select= c(1,3,7,9,10,15,27))
+```
+
+
+
+```{r include=FALSE}
+newframed <- newframe %>% filter(yearID == 2001)
+newframed
+
+```
+
+```{r include=FALSE}
+
+newframed$WL = (newframed$W - newframed$L)
+newframed$Wperc = (newframed$W /162)
+newframed$Wperc= round(newframed$Wperc, digits=3)*100
+
+newframed$RRA = (newframed$R - newframed$RA)
+
+
+newframed$Est_W_perc= (newframed$R^2)/(newframed$R^2+ newframed$RA^2 )
+newframed$Est_W_perc= round(newframed$Est_W_perc, digits=3)*100
+
+newframed$Wperc = round(newframed$Wperc, digits=3)*0.01
+
+
+```
+
+```{r include=FALSE}
+newframed$Revised_Est_W_perc = (newframed$R^1.81)/(newframed$R^1.81+ newframed$RA^1.81)
+newframed$Revised_Est_W_perc = round(newframed$Revised_Est_W_perc, digits=3)
+percentages$Wperc= 
+
+
+```
+
+```{r include=FALSE}
+
+percentages <- newframed
+
+percentages$Est_W_perc= (percentages$R^2)/(percentages$R^2+ percentages$RA^2)
+percentages$Est_W_perc=sprintf("%1.1f%%", 100*percentages$Est_W_perc)
+
+percentages$Revised_Est_W_perc= (percentages$R^1.81)/(percentages$R^1.81+ percentages$RA^1.81)
+percentages$Revised_Est_W_perc= sprintf("%1.1f%%", 100*percentages$Revised_Est_W_perc)
+percentages$Wperc= sprintf("%1.1f%%", 100*percentages$Wperc)
+
+
+
+
+percentages
+
+```
+
+<a href="https://joeposnanski.substack.com/p/the-run-differential-breakdown" style="color: #de4f1d">The run differential break down</a>
+
+<a href="https://www.baseball-reference.com/bullpen/Pythagorean_Theorem_of_Baseball" style="color: #de4f1d">Pythagorean Theorem of Baseball</a>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+embed_url("https://www.youtube.com/watch?t=88&v=Tzin1DgexlE&feature=emb_imp_woyt")
+```
+
+```{css echo=FALSE}
+
+<style>body { background-color: White; }
+</style>
+
+<div style="padding:15px; margin-top:50px; margin-bottom:50px; background-color:lightgrey;width:350px"
+<p>
+W: Wins
+</p>
+
+<p>
+L: Losses
+</p>
+
+<p>
+R: Runs scored
+</p>
+<p>
+RA: Opponents runs scored (Runs Allowed)
+</p>
+</div>
+
+```
+
+
+<img title="" alt="Alt text" src="https://res.cloudinary.com/dxowqlngv/image/upload/v1670155050/Screenshot_2022-12-02_at_19.30.11_hjfom9.png" width= 450px>
+
+
+
+
+<br>
+
+$\frac{R^2}{R^2+RA^2}= Est.W {\%}$
+          
+
+
+<br>
+
+
+
+
+```{r echo=FALSE}
+newer <-  percentages
+colnames(newer) [8]= "W-L"
+colnames(newer) [9]= "W%"
+colnames(newer) [10]= "R-RA"
+colnames(newer) [11]= "Est.W%"
+colnames(newer) [12]= "Revised Est.W%"
+
+newer <- newer[,-1]
+
+
+newer %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+
+
+
+```
+
+
+```{r echo=FALSE, message=FALSE}
+newplot <- ggplot(newframed, aes(x = RRA, y = Wperc))+
+  geom_point()+ theme_economist()+
+  geom_smooth(method="lm", se=FALSE)+
+  
+  labs(title="Wins percentage according to Runs scored compared to Runs Allowed",
+                                x="R-RA", y= "W%")+
+   theme(plot.title = element_text(hjust = 0.1, size = 12, face = "bold"))
+  
+  newplot
+```
+

@@ -1,0 +1,28 @@
+{
+    "id": "569EEC91",
+    "path": "~/Documents/Python/Crime_Project/Chicago Communities Crime Analysis_.Rmd",
+    "project_path": "Chicago Communities Crime Analysis_.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1672667634469.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "tempName": "Untitled2",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "331,22",
+        "scrollLine": "0",
+        "last_setup_crc32": ""
+    },
+    "folds": "0|3|5|0|\n7|27|9|0|\n13|31|22|0|\n27|20|33|0|\n49|15|134|0|\n61|20|72|0|\n75|20|84|0|\n86|20|98|0|\n102|38|133|0|\n140|20|153|0|\n181|20|212|0|\n",
+    "lastKnownWriteTime": 1672681058,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1672681058049,
+    "read_only": false,
+    "read_only_alternatives": []
+}

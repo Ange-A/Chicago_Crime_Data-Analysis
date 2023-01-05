@@ -1,0 +1,478 @@
+---
+title: "Chicago  Community Crime Analysis"
+author: "Ange  Christelle Aduhire"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r libraries, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(ggplot2)
+library(janitor)
+library(lubridate)
+library(kableExtra)
+library(stringr)
+```
+
+
+
+
+```{r include=FALSE}
+crime <- read.csv("Crimes_Present.csv", header = TRUE, sep= ",")
+
+crimehead <- head(crime, n=3)
+
+
+```
+
+```{r echo=FALSE}
+
+crimehead %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+
+# Introduction
+
+The research was done to understand crimes occuring accrosss blocks in Chicago. With the objective to determine the most popular crime blocks and crimes and to feed police departments with the necessary descriptive data, required to influence the level of vigilence accross Chicago communities.
+
+
+# Data Cleaning
+
+The data was prepared by:
+
+* Renaming columns for better userability
+* Changing columns to their respective data types
+* Changing column values N to No, Y to Yes
+* Replacing Empty columns with Null Values
+* Removing Missing values and duplicates
+* Capitalization of all values
+
+
+```{r include=FALSE}
+
+colnames(crime)[1]= "ID"
+colnames(crime)[2]= "OCCURENCE_DATE"
+colnames(crime)[5]="PDESCRIPTION"
+colnames(crime)[6]="SDESCRIPTION"
+colnames(crime)[7]="LOCATION_DESCRIPTION"
+colnames(crime)[12]="FBI_CD"
+colnames(crime)[13]="X_COORDINATE"
+colnames(crime)[14]="Y_COORDINATE"
+
+```
+
+
+```{r include=FALSE}
+
+#column separation
+
+
+crimes <- separate(crime, col= OCCURENCE_DATE, into=c('DATE', 'HOUR','AM'), sep=' ')
+crimes$HOUR <- paste(crimes$HOUR, crimes$AM)
+crimes <- crimes[,-c(4)]
+
+```
+
+```{r include=FALSE}
+
+#Change date_char columns to date types
+
+crimes <- crimes %>% mutate(DATE = as_date(DATE, format= "%m/%d/%Y"))
+
+
+#Transform N to No #Transform Y to Yes
+
+ crimes[, c(9,10)] [crimes[, c(9,10)] == "N"] <- "NO"
+ crimes[, c(9,10)] [crimes[, c(9,10)] == "Y"] <- "YES"
+
+```
+
+
+
+```{r data_preparation, include=FALSE}
+
+#check for empty cells and replacing them with NA
+
+ crimes[crimes == ''] <- NA
+
+
+
+# Identifying & Removing all NA  & duplicate Values
+
+
+sum(is.na(crimes)) #10966
+sum(duplicated(crimes)) #11
+
+
+# Identifying & Removing all NA  & duplicate Values
+crimes <- na.omit(crimes)
+crimes <- unique(crimes)
+
+
+
+#capitalize
+ 
+
+crimes <- mutate_all(crimes, .funs=toupper)
+
+
+#ORIGINAL DATA RECORDS: 234,807 entries
+#CURRENT DATA RECORDS23:  234,131  entries
+
+
+```
+
+#   Data Analysis
+
+# TOP 5 CRIME BLOCKS 
+One of the main objective of community policy departments is to identify red zones, that is, zones with the highes crime rates, so as to kep an eye on them. Our datasets has over 200,000 community blocks to observe. But in order to have a significant impact on crime reduction accross the city. The following blocks are to be kept on watch as they present higher criminality rates.
+
+```{r include=FALSE}
+Block_Crime <- (summary <- crimes %>%
+                  group_by(BLOCK)%>%
+                  summarize(crime = n())) 
+
+High_Crime_Blocks <- Block_Crime[order(-Block_Crime$crime),]
+
+
+top10 <- High_Crime_Blocks[1:10, ]
+
+top10
+
+
+```
+
+```{r echo=FALSE}
+top10plot <-  ggplot(top10, aes(x = BLOCK, y= crime, fill= BLOCK))+
+  geom_col()+
+
+  
+  labs(title= ' Top 10 Crime Blocks in Chicago',  
+       caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town", x= "Block", 
+       y= "Total Number of Crimes") +
+  
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, face = "italic"),
+        plot.caption = element_text(hjust = 0.5, face = "italic"))+ 
+  
+  scale_fill_brewer(palette = "Paired")
+
+
+
+top10plot
+```
+
+while these 10 plots represent outstanding crime figures compared to the others, the blocks: 001XX N STATE X and 0000X W Terminal ST, have figures that are significantly higher than all the other blocks of Chicago. Therefore additional effort by police departments in those two regions is substantially required.
+
+
+```{r include=FALSE}
+yesno <- crimes %>%
+  group_by(LOCATION_DESCRIPTION) %>%
+  summarize(Yes = sum(ARREST== "YES"), NO = sum(ARREST== 'NO'))
+
+yesno
+
+yesno <- yesno[with(yesno,order(-Yes)),]
+
+top10yesno <- yesno [1:10, ]
+
+
+rounded <- round(top10yesno[2:3] /rowSums(top10yesno[2:3]), 2)
+
+percentages <- cbind(top10yesno$LOCATION_DESCRIPTION, rounded)
+
+colnames(percentages)[1]= "location"
+
+
+
+yesnopivot <- pivot_longer(percentages,
+                        cols= -location,
+                        names_to ="yesno",
+                        names_prefix = "Crime",
+                        values_to= "percentages"
+)
+
+yesnopivot
+
+
+
+```
+
+# Arrests on the watch zone
+
+After identifying the red zone areas, the following analysis demonstrates whether the number of ordered arrests are being met across the top 10 high crime blocks in Chicago.
+
+
+```{r echo=FALSE}
+
+Arrests <- ggplot(yesnopivot, aes(x = yesno, y= percentages, fill= yesno))+
+           geom_col() + 
+           facet_wrap(~location) +
+  
+  geom_text(aes(label= paste0(round(percentages*100), "%")),
+            position = position_stack(vjust=0.8)) +
+  
+
+
+  labs(title=' Arrested Crimes vs Non Arrested Crimes per location', subtitle= 'Chicago Communities') + 
+  
+  theme(panel.background = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, face = "italic"),
+        plot.caption = element_text(hjust = 0.5, face = "italic")) + 
+  
+  scale_fill_brewer(palette = "Dark2")
+
+
+Arrests
+
+```
+
+The highest arrests have been made at grocery stores, sidewalks, departments stores
+and generally in public places. as Apartment arrests are very few compared to other arrests with an 8% arrest rate and a 92% rate of no arrests. This can imply many things such as:
+
+* Most crimes occur on the street
+* Offenders usually free the crime scense
+* The police does not always arrive in time to catch appartment level crimes
+
+
+```{r Crime Areas, include=FALSE}
+CrimeAreas <- (summary <- crimes %>%
+                  group_by(LOCATION_DESCRIPTION)%>%
+                  summarize(crime = n())) 
+
+CrimeAreas <- CrimeAreas[order(-CrimeAreas$crime),]
+
+top5CrimeAreas <- CrimeAreas  [1:5, ]
+
+
+
+
+
+```
+
+```{r area, echo=FALSE}
+
+CrimeAreasplot  <- ggplot(top5CrimeAreas, aes(x = LOCATION_DESCRIPTION , y= crime, fill= LOCATION_DESCRIPTION))+ 
+  geom_col() + 
+
+
+
+  labs(title=' Top 10 Crime Areas ', subtitle= 'Chicago Communities',  
+       caption="Source: https://www.kaggle.com/datasets/
+       etiennelq/french-employment-by-town") + 
+  
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, face = "italic"),
+        plot.caption = element_text(hjust = 0.5, face = "italic")) 
+    
+
+CrimeAreasplot  + scale_fill_brewer(palette = "Spectral")
+    
+  
+
+```
+
+## The highest crimes occur on:
+
+1. The street
+2. Apartment
+3. Residence
+4. Parking Lot
+5. Residence
+
+
+This shows that there is a massive gap in arresting offenders who commit crimes in appartments and private places. As demonstrated in the previous chart, only 8% of offenders were arrested and 92% were not.
+
+
+
+
+```{r top crimes, include=FALSE}
+
+criminality <- crimes %>%  
+  group_by(PDESCRIPTION) %>% 
+  summarize(n = n())
+criminality
+
+High_Crimes<- criminality[order(-criminality$n),]
+
+High_Crimes %>% summarise(Percentage=n()/ncol(.))
+
+High_Crimes$percentage= 100*(High_Crimes$n/sum(High_Crimes$n))
+
+top5crimes <- High_Crimes[1:5, ]
+
+
+
+```
+
+
+## KEYWORDS explained:
+
+#### Battery: 
+unlawful application of force directly or indirectly upon another person or their personal belongings, causing bodily injury or offensive contact.
+
+#### Criminal Damage: 
+intentionally damaging property that belongs to someone else, including public property.
+
+<br>
+
+```{r  top crimes plot, echo=FALSE}
+
+top5crimesplot <-  ggplot(top5crimes, aes(x = PDESCRIPTION, y= n, fill= PDESCRIPTION))+
+  geom_col()+
+  
+  geom_text(aes(label= paste0(round(percentage), "%")),
+                       position = position_stack(vjust=0.9))+
+  
+  labs(title= ' Top 5 most committed crimes', subtitle= 'Chicago Communities',  
+       caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town", x= "crime", 
+       y= "total number of crimes") +
+  
+    theme(panel.background = element_blank(),
+           axis.line = element_blank(),
+           axis.text = element_blank(),
+           axis.ticks= element_blank(),
+           axis.title = element_blank(),
+           plot.title = element_text(hjust = 0.5, size = 14, face = "bold"), 
+           plot.subtitle = element_text(hjust = 0.5, face = "italic"),
+           plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+top5crimesplot + scale_fill_brewer(palette = "Spectral")
+
+
+```
+
+
+Public crimes can be easier to detect and report. However crimes like battery and criminal damage may also be occur in private places. This is an issue because private places require advanced monitoring.
+
+
+```{r  Arrest vs no Arrests, include=FALSE}
+Arrested <- crimes %>%  
+  
+  group_by(ARREST) %>% 
+  
+  summarize(counts= n(),
+            percentage= n()/nrow(crimes))
+
+Arrested
+
+```
+
+
+```{r echo=FALSE}
+Arrestedplot <- ggplot(Arrested, aes(x ="", y = percentage, fill= ARREST))+
+  geom_col(color= "black")+
+  coord_polar("y", start= 0)+
+  
+  geom_text(aes(label= paste0(round(percentage*100), "%")),
+            position = position_stack(vjust=0.5))+
+  
+  labs(title=' Arrested Crimes vs Non Arrested Crimes', subtitle= 'Chicago Communities') + 
+  
+  
+  theme(panel.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks= element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, face = "italic"),
+        plot.caption = element_text(hjust = 0.5, face = "italic")) + 
+  
+  scale_fill_brewer(palette = "BrBG")
+
+
+
+Arrestedplot
+```
+
+* There is an undeniable gap between arrests made and those not effectuated.
+
+* There is a need to identify whether offenders are fleeing or there is other kinds of limitations that are occurring to limit arrests, or if there is an alternative need.
+
+```{r include=FALSE}
+domestic <- crimes %>%  
+  
+  group_by(DOMESTIC) %>% 
+  
+  summarize(counts= n(),
+            percentage= n()/nrow(crimes))
+
+domestic
+
+
+
+```
+
+
+```{r echo=FALSE}
+
+domesticplot <- ggplot(domestic, aes(x ="", y = percentage, fill= DOMESTIC))+
+  geom_col(color= "BLACK")+
+  coord_polar("y", start= 0)+
+  
+  geom_text(aes(label= paste0(round(percentage*100), "%")),
+            position = position_stack(vjust=0.5))+
+  
+  labs(title=' Domestic Crimes vs Non Domestic Crimes',  
+  caption="Source: https://www.kaggle.com/datasets/etiennelq/french-employment-by-town") + 
+
+  
+  theme(panel.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks= element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),   
+        plot.caption = element_text(hjust = 0.3, face = "italic")) + 
+  
+  scale_fill_brewer(palette = "Blues")
+  
+    
+
+domesticplot 
+
+
+```
+
+
+This Diagram shows that while domestic offenses are occuring, a higher number of offenses are occurring outside of private residences. However there is still an abnormal gap level between arrests occurring and not occurring.
+
+
+
+## conclusion
+
+* Community Police departments need to identify whether there is a unit location limitation when it comes to arrests.
+
+* Apartment offenses and arrests need to be given priority as there is a subtantial difference in the arrests made at apartments level.
+
+* Theft and criminal damages have occurred even at the respective police stations and in multiple cases arrests were not made.
+
+* There is a need for an analysis to determine factors limiting arrests in chicago communities.
+
+
+
+
+
+
+
+
+
